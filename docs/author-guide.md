@@ -243,7 +243,8 @@ If `null`, the default secret notes image texture
 An integer specifying the index in the `NoteImageTexture` to use for the note
 image. Unlike `NoteTextureIndex`, the default value here is `-1`, since the
 LetterViewerMenu itself uses this value to control rendering; as a result,
-**this value controls whether your note is an image note or a text note**.
+**this value controls whether your note is an image note (>= 0) or a text note
+(-1)**.
 
 *Default:* `-1`
 
@@ -263,10 +264,11 @@ collections menu).
 
 The actions are run when the letter menu is closed.
 
-**Note**: if you use this mod's trigger action to mark a note as seen (adding
-it to a player's collection), these actions **will not** run. Likewise, if you
-mark a seen note as unseen and it is collected again, the actions will run
-again when the player views the note.
+**Note**: if you use this mod's trigger action to [mark this note as
+seen](#marking-notes-as-seen) (adding it to a player's collection), these
+actions **will not** run. Likewise, if you mark a seen note as unseen and it is
+collected again, the actions will run again when the player uses the item and
+views the note.
 
 *Default:* `[]`
 
@@ -275,6 +277,11 @@ again when the player views the note.
 
 </table>
 
+Most of these fields are optional: you can create a fully-working text note by
+specifying only `Contents` (although including a `Title` is nice to do), or an
+image note with only `NoteImageTextureIndex` (although you ought to also
+specify `NoteImageTexture` and use your own asset).
+
 
 ### Content Patcher example
 
@@ -282,8 +289,8 @@ A Content Patcher patch to add a secret note to a mod might look like this:
 
 ```js
 {
-  "Action": "EditData",
   "Target": "Mods/ichortower.SecretNoteFramework/Notes",
+  "Action": "EditData",
   "Entries": {
     "{{ModId}}_SecretNote01": {
       "Contents": "I sure hope nobody finds this! It's full of embarrassing secrets.",
@@ -302,9 +309,64 @@ This patch creates a note which is available only after reaching 4 hearts with
 player for the next day, presumably to scold them for reading the diary.
 
 
+### Image Notes
+
+You can create image secret notes (like the picture of Marnie, or the secret
+dig locations) by specifying any value `0` or greater for
+`NoteImageTextureIndex` in your note's data.  When this value is >= 0, the
+`NoteImageTexture` (or the vanilla texture, if unspecified) will be loaded, and
+this offset in the texture will be displayed (this applies to both the hover
+tooltip and the inside of the letter). This image behaves exactly like the
+vanilla secret notes texture (`Data/SecretNotesImages`), as follows.
+
+Each note image in the texture is 64x64 pixels, the same size as a character
+portrait. They are read left-to-right and top-to-bottom, like this:
+
+```
+0   1   2   3
+4   5   6   7
+8   9  10  11
+etc.
+```
+
+The recommended minimum size for this image is 256x128 (four columns and two
+rows), because the LetterViewerMenu loads the texture for the piece of tape
+from this asset at the hardcoded offset (193, 65) and size (14, 21). In the
+layout above, this corresponds to **index 7**: if your image is wider, the
+affected index will change accordingly.
+
+This means that you should not use that index for your notes, and should
+instead draw your tape image there (consult the vanilla asset for reference).
+Of course, if you don't want the tape piece to appear on your notes, you can
+leave that area blank or make your texture smaller.
+
+Here's how you might set up an image note via Content Patcher:
+
+```js
+{
+  "Target": "Mods/ichortower.SecretNoteFramework/Notes",
+  "Action": "EditData",
+  "Entries": {
+    "{{ModId}}_SecretNote_TreasureMap": {
+      "Title": "Blackgull's Map",
+      "NoteImageTexture": "Mods/{{ModId}}/SecretNotesImages",
+      "NoteImageTextureIndex": 3
+    }
+  }
+},
+
+{
+  "Target": "Mods/{{ModId}}/SecretNotesImages",
+  "Action": "Load",
+  "FromFile": "assets/{{TargetWithoutPath}}.png"
+}
+```
+
 ### Querying Notes
 
-If you want your notes to be read in a particular order, you can use the
+#### Via Game State Query
+
+If you need to know whether a given note has been read, you can use the
 following [game state
 query](https://stardewvalleywiki.com/Modding:Game_state_queries) added by this
 mod:
@@ -314,9 +376,37 @@ ichortower.SecretNoteFramework_PLAYER_HAS_MOD_NOTE <player> <note_id>
 ```
 
 This query is specific to notes added via this framework, since they are stored
-separately from the vanilla notes.
+separately from the vanilla notes (in the farmer's modData, instead of in the
+dedicated secret notes field).
 
-You could create a sequence of notes by making each one require the previous
-one, or you could gate a set of notes behind having first acquired a different
-one, or similar. Remember that the `Conditions` field on the note object is
-evaluated only at the start of each day, so each step in a chain requires a new day to
+The expected use is to create note sequences, by making each later note require
+the previous one, or to gate a set of notes behind having first acquired a
+"key" note, or similar; but you can use it in any situation, like shop
+conditions, or whether a character attends your wedding, or anything else that
+strikes your fancy. Just remember that note conditions are only evaluated at
+the start of each day, so note chains will require multiple days to complete.
+
+#### Via Content Patcher
+
+This mod also adds a Content Patcher token:
+
+```
+{{ichortower.SecretNoteFramework_HasModNote}}
+```
+
+This token works just like `{{HasFlag}}`: it returns a comma-separated list of
+all modded notes seen by the current player. You can use it in the same way:
+
+```js
+"When": {
+  "ichortower.SecretNoteFramework/HasModNote": "MyNoteId"
+}
+
+"When": {
+  "ichortower.SecretNoteFramework/HasModNote |contains=MyNoteId": true
+}
+```
+
+Be mindful of your patch's [update
+rate](https://github.com/Pathoschild/StardewMods/blob/develop/ContentPatcher/docs/author-guide.md#update-rate),
+as usual, when relying on this token.
