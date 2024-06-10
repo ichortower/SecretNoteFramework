@@ -120,12 +120,12 @@ namespace ichortower.SNF
     internal class SecretModNoteData
     {
         public string Contents = "";
-        public string Title = "";
+        public string Title = null;
         public string Conditions = null;
         public string LocationContext = "!Island";
         public string ObjectId = null;
         public string NoteTexture = null;
-        public int NoteTextureIndex = -1;
+        public int NoteTextureIndex = 0;
         public string NoteTextColor = null;
         public string NoteImageTexture = null;
         public int NoteImageTextureIndex = -1;
