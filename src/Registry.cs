@@ -1,7 +1,9 @@
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Delegates;
 using StardewValley.Triggers;
 using System;
+using System.Collections.Generic;
 
 namespace ichortower.SNF
 {
@@ -22,6 +24,23 @@ namespace ichortower.SNF
             }
             return GameStateQuery.Helpers.WithPlayer(context.Player, playerKey,
                     (Farmer target) => ModData.HasNote(target, modNoteId));
+        }
+    }
+
+    internal class CPTokens
+    {
+        public static void Register()
+        {
+            var cpapi = SecretNoteFramework.instance.Helper.ModRegistry
+                    .GetApi<ContentPatcher.IContentPatcherAPI>("Pathoschild.ContentPatcher");
+            if (cpapi == null) {
+                Log.Warn("Could not load Content Patcher API");
+                return;
+            }
+            cpapi.RegisterToken(SecretNoteFramework.instance.ModManifest,
+                    "HasModNote", () => {
+                return new[] {ModData.NotesAsToken(Game1.player)};
+            });
         }
     }
 
@@ -129,5 +148,16 @@ namespace ichortower.SNF
             }
         }
     }
-
 }
+
+#nullable enable
+
+namespace ContentPatcher
+{
+    public interface IContentPatcherAPI
+    {
+        void RegisterToken(IManifest mod, string name, Func<IEnumerable<string>?> getValue);
+    }
+}
+
+#nullable disable

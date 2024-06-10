@@ -17,6 +17,7 @@ namespace ichortower.SNF
             helper.Events.Content.AssetRequested += SecretModNotes.OnAssetRequested;
             helper.Events.Content.AssetReady += SecretModNotes.OnAssetReady;
             helper.Events.Content.AssetsInvalidated += SecretModNotes.OnAssetsInvalidated;
+            helper.Events.GameLoop.GameLaunched += SecretNoteFramework.OnGameLaunched;
             helper.Events.GameLoop.DayStarted += SecretNoteFramework.OnDayStarted;
             helper.Events.GameLoop.ReturnedToTitle += SecretNoteFramework.OnReturnedToTitle;
 
@@ -24,6 +25,11 @@ namespace ichortower.SNF
             GameStateQueries.Register();
             TriggerActions.Register();
             ConsoleCommands.Register();
+        }
+
+        public static void OnGameLaunched(object sender, GameLaunchedEventArgs e)
+        {
+            CPTokens.Register();
         }
 
         public static void OnDayStarted(object sender, DayStartedEventArgs e)
