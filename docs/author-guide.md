@@ -15,7 +15,7 @@ Stardew Valley.
 * [How Modded Notes Work](#how-modded-notes-work)
   * [Spawning](#spawning)
   * [Saving](#saving)
-* [Debugging](#debugging)
+  * [Debugging](#debugging)
 
 
 ## Introduction
@@ -362,6 +362,10 @@ Here's how you might set up an image note via Content Patcher:
 }
 ```
 
+### Custom Items
+
+TODO
+
 ### Querying Notes
 
 #### Via Game State Query
@@ -375,6 +379,10 @@ mod:
 ichortower.SecretNoteFramework_PLAYER_HAS_MOD_NOTE <player> <note_id>
 ```
 
+Like most game state queries, the `<player>` argument can be [any specified
+player](https://stardewvalleywiki.com/Modding:Game_state_queries#Target_player):
+`Any`, `All`, `Current`, `Host`, `Target`, or a unique multiplayer ID.
+
 This query is specific to notes added via this framework, since they are stored
 separately from the vanilla notes (in the farmer's modData, instead of in the
 dedicated secret notes field).
@@ -386,16 +394,42 @@ conditions, or whether a character attends your wedding, or anything else that
 strikes your fancy. Just remember that note conditions are only evaluated at
 the start of each day, so note chains will require multiple days to complete.
 
+For example, two notes might look like this:
+
+```js
+{
+  "Target": "Mods/ichortower.SecretNoteFramework/Notes",
+  "Action": "EditData",
+  "Entries": {
+    "{{ModId}}_SecretNote_Part1": {
+      "Contents": "Chapter 1 of my debut mystery novel!",
+      "Title": "Mystery Part 1"
+    },
+    "{{ModId}}_SecretNote_Part2": {
+      "Contents": "And now, the thrilling conclusion!",
+      "Title": "Mystery Part 2",
+      "Conditions": "ichortower.SecretNoteFramework_PLAYER_HAS_MOD_NOTE Current {{ModId}}_SecretNote_Part1"
+    },
+  }
+}
+```
+
+With this setup, the first note is available as soon as the player has access
+to Secret Notes, but the second one is not; starting from the next day after
+finding the first one, the second becomes available.
+
 #### Via Content Patcher
 
 This mod also adds a Content Patcher token:
 
 ```
-{{ichortower.SecretNoteFramework_HasModNote}}
+{{ichortower.SecretNoteFramework/HasModNote}}
 ```
 
 This token works just like `{{HasFlag}}`: it returns a comma-separated list of
-all modded notes seen by the current player. You can use it in the same way:
+all modded notes seen by the current player (at this time, no other specified
+players are supported. I may add this in the future, if it's feasible). You can
+use it in the same way:
 
 ```js
 "When": {
@@ -410,3 +444,100 @@ all modded notes seen by the current player. You can use it in the same way:
 Be mindful of your patch's [update
 rate](https://github.com/Pathoschild/StardewMods/blob/develop/ContentPatcher/docs/author-guide.md#update-rate),
 as usual, when relying on this token.
+
+
+### Marking Notes as Seen
+
+This mod adds a [trigger
+action](https://stardewvalleywiki.com/Modding:Trigger_actions) which you can
+use to mark notes as seen (or unseen) directly, without the player having to
+find the note or use the item.
+
+```
+ichortower.SecretNoteFramework_MarkModNoteSeen <player> <note id> [true/false]
+```
+
+`<player>` should be one of `Current`, `Host`, `All`, or a unique multiplayer
+ID. The third argument is optional and may be set to `false` in order to mark a
+note as *unread* instead of as read (removing it from the player's collection,
+instead of adding it).
+
+Like the GSQ and the CP token, this trigger works exclusively on modded notes
+and will not affect vanilla ones.
+
+**Important Note**: when you use this trigger action to mark a note as read,
+its actions listed under `ActionsOnFirstRead` **will not** be executed. If you
+need to execute them, you should rely on the player to find and read the note,
+or you should duplicate them in the context you are using to run this action.
+
+Likewise, marking a note as unread will allow it to be collected again, which
+can cause its `ActionsOnFirstRead` to execute an additional time.
+
+
+## How Modded Notes Work
+
+Broadly, the notes added to the `Mods/ichortower.SecretNoteFramework/Notes`
+asset behave in the same way that [vanilla secret notes
+do](https://stardewvalleywiki.com/Secret_Notes); this section explains what
+that means in detail.
+
+### Spawning
+
+This mod adds a subsequent check for modded notes which is performed only after
+the base game has already attempted to spawn a note. If a vanilla note was
+spawned, there is a 50% chance that this mod's check will attempt to replace
+it, or else do nothing. If no vanilla note was spawned, the check proceeds
+normally but is less likely to succeed (the goal here is to avoid increasing
+the frequency of generated notes too much).
+
+The check has the same chance as the vanilla notes, but taking into account
+only notes which are available to spawn (based on their `Conditions` and
+`LocationContext` fields): a linear scale, from 80% if none have been found to
+12% if only one remains unseen. If not rolling to replace a vanilla note, the
+starting chance is cut in half, so the range becomes 40% to 12%.
+
+When a note is spawned, its `ObjectId` field is checked to generate the
+inventory item. Like with vanilla secret notes, the note has not been selected
+yet: that occurs only when the item is used, to read the note. On use, the note
+item will randomly choose from unread notes that use its ID (i.e. the set of
+notes that have this item for their `ObjectId`).
+
+If no note is available to read when the item is used, it will disappear from
+inventory and display a message (in English, it's "The note crumbled to
+dust..."). This shouldn't happen unless the player cheated the note items into
+their inventory; or if they found a note and didn't use it for a while, and in
+the meantime all notes of its type became unavailable; or something of that
+nature.
+
+### Saving
+
+Notes seen by each player are saved in the Farmer's modData, under the
+following key:
+
+```
+ichortower.SecretNoteFramework/NotesSeen
+```
+
+There is no specific limit to the number of notes that can be added. The code
+which adds the modded notes to the Collections page accounts for pagination,
+so if you have a lot of modded notes, more pages will be added as needed, just
+like the Mail tab.
+
+### Debugging
+
+This mod includes a SMAPI console command which is intended to help authors
+iterate quickly when creating notes, much like Content Patcher's `patch reload`
+and `patch update`. It is:
+
+```
+snf_reload <target>
+```
+
+Where `<target>` should be one of `data`, `check`, or `full` (or `help`, or
+omit it, in order to see the usage notes directly in the console).
+
+* **data**: cache-invalidate and reload the notes data asset.
+* **check**: reevaluate the `Conditions` fields on all notes, rebuilding the
+  list of notes eligible to spawn.
+* **full**: reload the notes data asset, then reevaluate note conditions (like
+  running "data" followed by "check").
