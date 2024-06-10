@@ -80,6 +80,9 @@ namespace ichortower.SNF
             if (__result) {
                 return;
             }
+            if (!SecretModNotes.ActiveObjectIds.Contains(__instance.QualifiedItemId)) {
+                return;
+            }
             // pick an unseen note from active ones
             var eligible = SecretModNotes.Data.Where((kvp) => {
                 return SecretModNotes.AvailableNoteIds.Contains(kvp.Key) &&
@@ -87,8 +90,7 @@ namespace ichortower.SNF
                         (kvp.Value.ObjectId ?? SecretModNotes.DefaultObjectId) ==
                         __instance.QualifiedItemId;
             }).ToList();
-            if (!SecretModNotes.ActiveObjectIds.Contains(__instance.QualifiedItemId) ||
-                    eligible.Count == 0) {
+            if (eligible.Count == 0) {
                 Log.Warn($"No unread notes found for note item '{__instance.QualifiedItemId}'");
                 Game1.playSound("newRecipe");
                 TemporaryAnimatedSprite puff = new(
@@ -140,10 +142,16 @@ namespace ichortower.SNF
             }
             string context = __instance.GetLocationContextId().ToLower();
             var eligible = SecretModNotes.Data.Where((kvp) => {
-                string[] locs = kvp.Value.LocationContext.Split(",")
+                if (!SecretModNotes.AvailableNoteIds.Contains(kvp.Key)) {
+                    return false;
+                }
+                string lc = kvp.Value.LocationContext;
+                if (lc.StartsWith("!")) {
+                    return context != lc.Substring(1).Trim().ToLower();
+                }
+                string[] locs = lc.Split(",")
                         .Select(s => s.Trim().ToLower()).ToArray();
-                return SecretModNotes.AvailableNoteIds.Contains(kvp.Key) &&
-                        Array.IndexOf(locs, context) >= 0;
+                return Array.IndexOf(locs, context) >= 0;
             }).ToList();
             var unseen = eligible.Where(kvp => !ModData.HasNote(who, kvp.Key)).ToList();
             int notesHeld = 0;
@@ -155,11 +163,11 @@ namespace ichortower.SNF
             }
             float frac = (float)(unseen.Count - notesHeld - 1) /
                     (float)Math.Max(1, eligible.Count - 1);
-            // cut initial note chance in half. this postfix gives you an
-            // independent second chance at a note, so I don't want to increase
-            // total note generation *too* much
+            // if vanilla didn't roll a note, cut the initial note chance in
+            // half, since this gives you a second chance to get one
+            float denom = (__result == null ? 2.0f : 1.0f);
             float noteChance = Utility.Lerp(GameLocation.LAST_SECRET_NOTE_CHANCE,
-                    GameLocation.FIRST_SECRET_NOTE_CHANCE / 2.0f, frac);
+                    GameLocation.FIRST_SECRET_NOTE_CHANCE / denom, frac);
             if (!Game1.random.NextBool(noteChance)) {
                 return;
             }
