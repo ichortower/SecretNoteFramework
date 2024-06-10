@@ -36,8 +36,9 @@ As a mod author, this framework provides a data asset which your mod should
 edit in order to add entries for your secret notes. You can use SMAPI's content
 API or [Content
 Patcher](https://github.com/Pathoschild/StardewMods/tree/stable/ContentPatcher)
-for this. I may add content pack support in the future, if there is demand for
-it, but I suspect using Content Patcher will suffice for most authors.
+for this. I may add content pack support or a C# API in the future, if there is
+demand for it, but I suspect using Content Patcher will suffice for most
+authors.
 
-A more detailed explanation, including the data schema and examples, is in the
-[author guide](author-guide.md).
+A more detailed explanation of how to use this mod's features is in the [author
+guide](author-guide.md).
