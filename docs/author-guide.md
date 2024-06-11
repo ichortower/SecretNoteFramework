@@ -10,11 +10,11 @@ Stardew Valley.
   * [Content Patcher example](#content-patcher-example)
   * [Image Notes](#image-notes)
   * [Custom Items](#custom-items)
-  * [Querying Notes](#querying-notes)
-  * [Marking Notes as Seen](#marking-notes-as-seen)
 * [How Modded Notes Work](#how-modded-notes-work)
   * [Spawning](#spawning)
-  * [Saving](#saving)
+  * [Collecting](#collecting)
+  * [Querying Notes](#querying-notes)
+  * [Marking Notes as Seen](#marking-notes-as-seen)
   * [Debugging](#debugging)
 
 
@@ -26,8 +26,8 @@ SMAPI's Content API to perform their edits; in the future, I may provide
 content pack support and/or a C# API, but those are not supported yet.
 
 In addition to providing a way to add secret notes without fear of conflicts
-(or of running out of space on the collections page), you can also do a few
-advanced things, like:
+(or of running out of space on the collections page), this mod also lets you do
+a few advanced things, like:
 
 * specify complex eligibility conditions on a note-by-note basis with game
   state queries
@@ -41,6 +41,9 @@ advanced things, like:
 
 Let's begin!
 
+(**Please note**: I recommend using i18n for text content in your mods. The
+examples in this guide omit its use, for clarity of purpose)
+
 
 ## Adding Notes
 
@@ -52,8 +55,9 @@ Mods/ichortower.SecretNoteFramework/Notes
 ```
 
 The asset is a `string->object` dictionary. The `string` keys are note IDs, and
-should be unique string IDs, like most 1.6-era data items. The model (object)
-has the following fields:
+should be [unique string
+IDs](https://stardewvalleywiki.com/Modding:Common_data_field_types#Unique_string_ID),
+like most 1.6-era data items. The model (object) has the following fields:
 
 <table>
 
@@ -364,7 +368,136 @@ Here's how you might set up an image note via Content Patcher:
 
 ### Custom Items
 
-TODO
+Using custom items for your secret notes lets you add a little extra *je ne
+sais quoi* to your mod, and it helps your notes stand out from the vanilla
+notes as well as those added by other mods. You can use as many different
+`ObjectId`s as you want, creating groups of notes with related meaning.
+
+Adding an item to accompany your note is pretty simple. Here's a Content
+Patcher example adding a note which can be found after earning the Sous Chef
+achievement. When found, it gives the player a new cooking recipe:
+
+```js
+{
+  "Target": "Mods/ichortower.SecretNoteFramework/Notes",
+  "Action": "EditData",
+  "Entries": {
+    "{{ModId}}_Note_CookingSecrets": {
+      "Contents": "YOUR TEXT HERE: explain the top-secret cooking knowledge",
+      "Title": "Cooking Secrets",
+      "ObjectId": "(O){{ModId}}_Object_CookingSecrets",
+      "Conditions": "PLAYER_HAS_ACHIEVEMENT Current 16", // Sous Chef
+      "ActionsOnFirstRead": [
+        "MarkCookingRecipeKnown Current {{ModId}}_SecretFamilyRecipe"
+      ]
+    }
+  }
+},
+
+{
+  "Target": "Data/Objects",
+  "Action": "EditData",
+  "Entries": {
+    "{{ModId}}_Object_CookingSecrets": {
+      "Name": "TornPageCookingSecrets",
+      "DisplayName": "[LocalizedText Strings\\Objects:{{ModId}}_Object_CookingSecrets_Name]",
+      "Description": "[LocalizedText Strings\\Objects:{{ModId}}_Object_CookingSecrets_Description]",
+      "Type": "asdf",
+      "Category": 0,
+      "Price": 1,
+      "Texture": "Mods/{{ModId}}/TornPageCookingSecrets",
+      "SpriteIndex": 0,
+      "Edibility": -300
+    }
+  }
+},
+
+{
+  "Target": "Strings/Objects",
+  "Action": "EditData",
+  "Entries": {
+    "{{ModId}}_Object_CookingSecrets_Name": "Torn Cookbook Page",
+    "{{ModId}}_Object_CookingSecrets_Description": "It's a page torn from an old cookbook. It's in bad shape, but still legible."
+  }
+},
+
+{
+  "Target": "Mods/{{ModId}}/TornPageCookingSecrets",
+  "Action": "Load",
+  "FromFile": "assets/{{TargetWithoutPath}}.png"
+}
+```
+
+I don't think your objects are *required* to be of `"Type": "asdf"` and
+`"Category": 0`, but that's how the vanilla secret note items are and I
+recommend copying them.
+
+When adding notes, it is recommended to either omit `ObjectId` (and let the
+framework use its own default object) or to use the ID of an object you are
+adding to the game. When an object is connected to notes via `ObjectId`, this
+framework automatically checks for the object id in its postfix patch to the
+method `Object.performUseAction`, triggering the addition of the note to your
+collection if it finds a match. This is why you should not use existing items:
+they may already have code attached to them, and the note check may never be
+run as a result.
+
+
+## How Modded Notes Work
+
+Broadly, the notes added to the `Mods/ichortower.SecretNoteFramework/Notes`
+asset behave in the same way that [vanilla secret notes
+do](https://stardewvalleywiki.com/Secret_Notes); this section explains what
+that means in detail.
+
+
+### Spawning
+
+This mod adds a subsequent check for modded notes which is performed only after
+the base game has already attempted to spawn a note. If a vanilla note was
+spawned, there is a 50% chance that this mod's check will attempt to replace
+it, or else do nothing. If no vanilla note was spawned, the check proceeds
+normally but is less likely to succeed (the goal here is to avoid increasing
+the frequency of generated notes too much).
+
+The check has the same chance as the vanilla notes, but taking into account
+only notes which are available to spawn (based on their `Conditions` and
+`LocationContext` fields): a linear scale, from 80% if none have been found to
+12% if only one remains unseen. If not rolling to replace a vanilla note, the
+starting chance is cut in half, so the range becomes 40% to 12%.
+
+When a note is spawned, its `ObjectId` field is checked to generate the
+inventory item. Like with vanilla secret notes, the note has not truly been
+selected yet: that occurs only when the item is used, to read the note. On use,
+the note item will randomly choose from unread notes that use its ID (i.e. the
+set of notes that have this item for their `ObjectId`).
+
+If no note is available to read when the item is used, it will disappear from
+inventory and display a message (in English, it's "The note crumbled to
+dust..."). This shouldn't happen unless the player cheated the note items into
+their inventory; or if they found a note and didn't use it for a while, and in
+the meantime all notes of its type became unavailable; or something of that
+nature.
+
+
+### Collecting
+
+Notes seen by each player are saved in the Farmer's modData, under the
+following key:
+
+```
+ichortower.SecretNoteFramework/NotesSeen
+```
+
+When opening the collections menu, this mod adds any notes the player has seen
+(drawn normally) and any notes that are eligible to spawn (grayed out), just
+like vanilla secret notes. **Notes which are not eligible to spawn and have not
+been seen will not appear**.
+
+There is no specific limit to the number of notes that can be added. The code
+which adds the modded notes to the Collections menu accounts for pagination,
+so if you have a lot of modded notes, more pages will be added as needed, just
+like the Mail tab.
+
 
 ### Querying Notes
 
@@ -402,7 +535,7 @@ For example, two notes might look like this:
   "Action": "EditData",
   "Entries": {
     "{{ModId}}_SecretNote_Part1": {
-      "Contents": "Chapter 1 of my debut mystery novel!",
+      "Contents": "Part 1 of my debut mystery novel!",
       "Title": "Mystery Part 1"
     },
     "{{ModId}}_SecretNote_Part2": {
@@ -428,8 +561,8 @@ This mod also adds a Content Patcher token:
 
 This token works just like `{{HasFlag}}`: it returns a comma-separated list of
 all modded notes seen by the current player (at this time, no other specified
-players are supported. I may add this in the future, if it's feasible). You can
-use it in the same way:
+players are supported. I may add this in the future, if it's useful and
+feasible). You can use it in the same way:
 
 ```js
 "When": {
@@ -471,57 +604,8 @@ need to execute them, you should rely on the player to find and read the note,
 or you should duplicate them in the context you are using to run this action.
 
 Likewise, marking a note as unread will allow it to be collected again, which
-can cause its `ActionsOnFirstRead` to execute an additional time.
+will cause its `ActionsOnFirstRead` to execute an additional time.
 
-
-## How Modded Notes Work
-
-Broadly, the notes added to the `Mods/ichortower.SecretNoteFramework/Notes`
-asset behave in the same way that [vanilla secret notes
-do](https://stardewvalleywiki.com/Secret_Notes); this section explains what
-that means in detail.
-
-### Spawning
-
-This mod adds a subsequent check for modded notes which is performed only after
-the base game has already attempted to spawn a note. If a vanilla note was
-spawned, there is a 50% chance that this mod's check will attempt to replace
-it, or else do nothing. If no vanilla note was spawned, the check proceeds
-normally but is less likely to succeed (the goal here is to avoid increasing
-the frequency of generated notes too much).
-
-The check has the same chance as the vanilla notes, but taking into account
-only notes which are available to spawn (based on their `Conditions` and
-`LocationContext` fields): a linear scale, from 80% if none have been found to
-12% if only one remains unseen. If not rolling to replace a vanilla note, the
-starting chance is cut in half, so the range becomes 40% to 12%.
-
-When a note is spawned, its `ObjectId` field is checked to generate the
-inventory item. Like with vanilla secret notes, the note has not been selected
-yet: that occurs only when the item is used, to read the note. On use, the note
-item will randomly choose from unread notes that use its ID (i.e. the set of
-notes that have this item for their `ObjectId`).
-
-If no note is available to read when the item is used, it will disappear from
-inventory and display a message (in English, it's "The note crumbled to
-dust..."). This shouldn't happen unless the player cheated the note items into
-their inventory; or if they found a note and didn't use it for a while, and in
-the meantime all notes of its type became unavailable; or something of that
-nature.
-
-### Saving
-
-Notes seen by each player are saved in the Farmer's modData, under the
-following key:
-
-```
-ichortower.SecretNoteFramework/NotesSeen
-```
-
-There is no specific limit to the number of notes that can be added. The code
-which adds the modded notes to the Collections page accounts for pagination,
-so if you have a lot of modded notes, more pages will be added as needed, just
-like the Mail tab.
 
 ### Debugging
 
