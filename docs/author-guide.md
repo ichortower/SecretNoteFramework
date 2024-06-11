@@ -20,8 +20,8 @@ Stardew Valley.
 
 ## Introduction
 
-Secret Note Framework interacts with other mods by providing a data asset for
-them to edit. At this time, other mods are expected to use Content Patcher or
+Secret Note Framework works for other mods by providing a data asset for them
+to edit. At this time, other mods are expected to use Content Patcher or
 SMAPI's Content API to perform their edits; in the future, I may provide
 content pack support and/or a C# API, but those are not supported yet.
 
@@ -42,7 +42,7 @@ a few advanced things, like:
 Let's begin!
 
 (**Please note**: I recommend using i18n for text content in your mods. The
-examples in this guide omit its use, for clarity of purpose)
+examples in this guide omit its use, for clarity of purpose.)
 
 
 ## Adding Notes
@@ -150,14 +150,14 @@ the default value is `!Island`, mimicking vanilla's secret notes.
 <td>
 
 A qualified or unqualified object ID from `Data/Objects`. This is analogous to
-the vanilla items "Secret Note" (`(O)79`) and "Journal Scrap" (`(O)842`): this
-item will be created as debris, and when the player uses it, one of the notes
+the vanilla items "Secret Note" `(O)79` and "Journal Scrap" `(O)842`: this item
+will be created as debris, and when the player uses it, one of the notes
 matching it will be read (see [Spawning](#spawning), under how notes work, for
 more details). This item's sprite will also be displayed in the collections
 page to represent this note, either grayed out (unread) or normal (read).
 
 If this field is `null` (the default), the mod will use its default secret note
-object. For best results, you should omit it or specify a [custom
+object. For best results, you should leave it as default or specify a [custom
 item](#custom-items).
 
 *Default:* `null`
