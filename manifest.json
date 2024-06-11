@@ -6,7 +6,7 @@
   "UniqueID": "ichortower.SecretNoteFramework",
   "EntryDll": "SecretNoteFramework.dll",
   "MinimumApiVersion": "4.0.0",
-  "UpdateKeys": ["Nexus:-1"],
+  "UpdateKeys": ["Nexus:25055", "GitHub:ichortower/SecretNoteFramework"],
   "Dependencies": [
     {
       "UniqueID": "Pathoschild.ContentPatcher",
