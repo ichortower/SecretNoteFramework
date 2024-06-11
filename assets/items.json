@@ -8,9 +8,6 @@
         "Price": 1,
         "Texture": "Mods/ichortower.SecretNoteFramework/DefaultNoteTexture",
         "SpriteIndex": 0,
-        "Edibility": -300,
-        "ArtifactSpotChances": {
-          "Town": 0.0001
-        }
+        "Edibility": -300
     }
 }
