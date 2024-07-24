@@ -249,9 +249,12 @@ namespace ichortower.SNF
                         " " + noteData.NoteImageTextureIndex +
                         " " + (noteData.Title ?? "???");
             }
-            string parsedText = Game1.parseText(Utility.ParseGiftReveals(noteData.Contents)
+            string subbedText = Dialogue.applyGenderSwitchBlocks(
+                    Game1.player.Gender, noteData.Contents);
+            subbedText = Utility.ParseGiftReveals(subbedText)
                     .TrimStart(' ', '^').Replace("^", Environment.NewLine)
-                    .Replace("@", Game1.player.Name), Game1.smallFont, 512);
+                    .Replace("@", Game1.player.Name);
+            string parsedText = Game1.parseText(subbedText, Game1.smallFont, 512);
             string[] split = parsedText.Split(Environment.NewLine);
             int max = 15;
             if (split.Length > max) {
