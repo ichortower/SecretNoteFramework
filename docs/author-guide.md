@@ -41,8 +41,8 @@ a few advanced things, like:
 
 Let's begin!
 
-(**Please note**: I recommend using i18n for text content in your mods. The
-examples in this guide omit its use, for clarity of purpose.)
+(**Please note**: although I recommend using i18n for text content in your
+mods, the examples in this guide omit its use, for clarity of purpose.)
 
 
 ## Adding Notes
@@ -124,20 +124,44 @@ note has been seen by a player, which is useful for ordering your notes.
 </tr>
 
 <tr>
+<td><code>Location</code></td>
+<td>string</td>
+<td>
+
+This string specifies one or more location names where the note is able to
+appear: except in the specified locations, the note will not spawn. This allows
+you to limit the areas where your note can be found even more narrowly than
+with `LocationContext` (but see that field for an alternative).
+
+Specify any number of location names, separated by commas (e.g. `Town, Forest,
+{{ModId}}_MyMap`), to allow a note to spawn in any of them.
+
+If this field is specified, it will supersede `LocationContext`; they cannot be
+combined.
+
+*Default:* `null`
+
+</td>
+</tr>
+
+<tr>
 <td><code>LocationContext</code></td>
 <td>string</td>
 <td>
 
 This string specifies one or more location contexts where the note is able to
-appear. Vanilla journal scraps spawn only in the `Island` context (i.e. on
-Ginger Island); secret notes spawn anywhere else. You can specify any value(s)
-here, including modded contexts, so for example if a mod adds a mountain area
-with a separate context, you can define notes which spawn only there.
+appear. In vanilla, journal scraps spawn only in the `Island` context (i.e. on
+Ginger Island), and secret notes spawn anywhere else. You can specify any
+value(s) here, including modded contexts, so for example if a mod adds a
+mountain area with a separate context, you can define notes which spawn only
+there.
 
 Specify any number of context names, separated by commas (e.g. `Default,
 Desert`), to allow a note to spawn in any of them. Alternately, you can specify
 one context name preceded by a `!` to specify any location *except* that one:
 the default value is `!Island`, mimicking vanilla's secret notes.
+
+If `Location` is specified, this field will be ignored.
 
 *Default:* `!Island`
 
@@ -156,9 +180,9 @@ matching it will be read (see [Spawning](#spawning), under how notes work, for
 more details). This item's sprite will also be displayed in the collections
 page to represent this note, either grayed out (unread) or normal (read).
 
-If this field is `null` (the default), the mod will use its default secret note
-object. For best results, you should leave it as default or specify a [custom
-item](#custom-items).
+If this field is `null` (the default), the framework will use its default
+secret note object. For best results, you should leave it as default or specify
+a [custom item](#custom-items).
 
 *Default:* `null`
 
@@ -213,6 +237,9 @@ any of the 10 acceptable vanilla color names:
 ```
 "NoteTextColor": "rgb(88, 34, 44)",
 ```
+
+Note that the text in mail and secret notes is rendered at 75% opacity, so the
+color you indicate here will blend slightly with the background texture.
 
 *Default:* `null`
 

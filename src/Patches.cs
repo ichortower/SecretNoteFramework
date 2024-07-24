@@ -140,18 +140,27 @@ namespace ichortower.SNF
             if (__result != null && Game1.random.NextBool()) {
                 return;
             }
-            string context = __instance.GetLocationContextId().ToLower();
+            string locContext = __instance.GetLocationContextId().ToLower();
+            string locName = __instance.Name.ToLower();
+            // eligible is recorded separately from unseen, because the ratio
+            // determines the spawn chance. that's why the HasNote condition
+            // isn't inside the first Where here
             var eligible = SecretModNotes.Data.Where((kvp) => {
                 if (!SecretModNotes.AvailableNoteIds.Contains(kvp.Key)) {
                     return false;
                 }
-                string lc = kvp.Value.LocationContext;
-                if (lc.StartsWith("!")) {
-                    return context != lc.Substring(1).Trim().ToLower();
+                string startValue = kvp.Value.Location;
+                string checkValue = locName;
+                if (String.IsNullOrEmpty(startValue)) {
+                    startValue = kvp.Value.LocationContext;
+                    if (startValue.StartsWith("!")) {
+                        return locContext != startValue.Substring(1).Trim().ToLower();
+                    }
+                    checkValue = locContext;
                 }
-                string[] locs = lc.Split(",")
+                string[] validValues = startValue.Split(",")
                         .Select(s => s.Trim().ToLower()).ToArray();
-                return Array.IndexOf(locs, context) >= 0;
+                return Array.IndexOf(validValues, checkValue) >= 0;
             }).ToList();
             var unseen = eligible.Where(kvp => !ModData.HasNote(who, kvp.Key)).ToList();
             int notesHeld = 0;
