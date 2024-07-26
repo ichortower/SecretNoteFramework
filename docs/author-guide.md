@@ -9,6 +9,7 @@ Stardew Valley.
 * [Adding Notes](#adding-notes)
   * [Content Patcher example](#content-patcher-example)
   * [Image Notes](#image-notes)
+  * [Combined Notes](#combined-notes)
   * [Custom Items](#custom-items)
 * [How Modded Notes Work](#how-modded-notes-work)
   * [Spawning](#spawning)
@@ -37,6 +38,7 @@ a few advanced things, like:
   desired
 * specify your own assets for note content and formatting, including image
   notes
+* create notes with an image as well as (a small amount of) text
 * set any number of trigger actions to be run when a note is first read
 
 Let's begin!
@@ -79,6 +81,13 @@ breaks, and `@` will be replaced with the player's name. You can also use the
 codes](https://stardewvalleywiki.com/Modding:Mail_data#Custom_mail_formatting)
 `[letterbg]` and `[textcolor]`, but it is preferred to use the other fields for
 that instead (the fields will supersede the in-band format codes).
+
+Unlike vanilla notes, with Secret Note Framework you can include some text in
+image notes (see `NoteImageTextureIndex`, which is used to control whether a
+note displays an enclosed image). When `NoteImageTextureIndex` is >= 0, the
+`Contents` field will still be used, but is limited to two lines of text,
+displayed above and below the image. See [Combined Notes](#combined-notes) for
+more information.
 
 *Default:* `""`
 
@@ -252,11 +261,12 @@ color you indicate here will blend slightly with the background texture.
 <td>
 
 A game asset path indicating the texture to use when loading an image for an
-[image note](#image-notes) (see that section for more details).
-Note images are 64x64 pixels and are read in order, left-to-right and
-top-to-bottom, just like other spritesheets; but be aware that there is a
-hardcoded offset for the image of the piece of tape holding the image inside
-the note (193/65, 14x21), so you should not use the index containing that.
+[image note](#image-notes) or [combined note](#combined-notes) (see those
+sections for more details). Note images are 64x64 pixels and are read in
+order, left-to-right and top-to-bottom, just like other spritesheets; but be
+aware that there is a hardcoded offset for the image of the piece of tape
+holding the image inside the note (193/65, 14x21), so you should not use the
+index containing that.
 
 If `null`, the default secret notes image texture
 (`TileSheets/SecretNotesImages.png`) will be used.
@@ -274,8 +284,12 @@ If `null`, the default secret notes image texture
 An integer specifying the index in the `NoteImageTexture` to use for the note
 image. Unlike `NoteTextureIndex`, the default value here is `-1`, since the
 LetterViewerMenu itself uses this value to control rendering; as a result,
-**this value controls whether your note is an image note (>= 0) or a text note
-(-1)**.
+**this value controls whether your note is an image or combined note (>= 0) or
+a text note (-1)**.
+
+To display just an image in your note, set this to a value >= 0 and also omit
+the `Contents` field; for a combined note, also include `Contents` (but mind
+the limit on length in this case).
 
 *Default:* `-1`
 
@@ -350,6 +364,9 @@ this offset in the texture will be displayed (this applies to both the hover
 tooltip and the inside of the letter). This image behaves exactly like the
 vanilla secret notes texture (`Data/SecretNotesImages`), as follows.
 
+(Image notes can also include a small amount of text; see [Combined
+Notes](#combined-notes))
+
 Each note image in the texture is 64x64 pixels, the same size as a character
 portrait. They are read left-to-right and top-to-bottom, like this:
 
@@ -392,6 +409,41 @@ Here's how you might set up an image note via Content Patcher:
   "FromFile": "assets/{{TargetWithoutPath}}.png"
 }
 ```
+
+### Combined Notes
+
+Combined notes are [image notes](#image-notes) which also include text. To
+define one, simply set `NoteImageTextureIndex` to a value 0 or greater, and
+also include a `Contents` field. When both fields are set, the letter will
+render with an enclosed image, as above, and the first two lines' worth of text
+from `Contents` will be drawn above and below the image.
+
+**Note**: the text portion of combined notes **is not rendered in the note's
+hover tooltip** in the collections page. It is drawn only in the letter view
+itself.
+
+You can draw only the leading line by keeping your `Contents` field short; if
+there isn't enough text for a second line, it won't be drawn. Likewise, if you
+want only the trailing line, you can write a short line and start it with a
+mail-formatted line break `^`, so that the first line is empty.
+
+Here's how the previous image note example might look if it also included text:
+
+```js
+{
+  "Target": "Mods/ichortower.SecretNoteFramework/Notes",
+  "Action": "EditData",
+  "Entries": {
+    "{{ModId}}_SecretNote_TreasureMap": {
+      "Title": "Blackgull's Map",
+      "Contents": "^Good luck findin' this one, matey!",
+      "NoteImageTexture": "Mods/{{ModId}}/SecretNotesImages",
+      "NoteImageTextureIndex": 3
+    }
+  }
+}
+```
+
 
 ### Custom Items
 
