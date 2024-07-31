@@ -32,13 +32,13 @@ a few advanced things, like:
 
 * specify complex eligibility conditions on a note-by-note basis with game
   state queries
-* determine which location context(s) your notes appear in, so you can (e.g.)
-  restrict your mod's notes to spawn only in your mod's area
+* declare which specific locations (or location contexts) your notes appear
+  in, so you can (e.g.) restrict your mod's notes to spawn only in your areas
 * use different (custom) items to represent different sets of notes, as
   desired
 * specify your own assets for note content and formatting, including image
   notes
-* create notes with an image as well as (a small amount of) text
+* create notes with an image as well as a small amount of text
 * set any number of trigger actions to be run when a note is first read
 
 Let's begin!
