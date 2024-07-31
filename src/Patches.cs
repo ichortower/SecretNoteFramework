@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
+using StardewValley.BellsAndWhistles;
 using StardewValley.Extensions;
 using StardewValley.Menus;
 using StardewValley.Triggers;
@@ -24,17 +25,20 @@ namespace ichortower.SNF
             Harmony harmony = new(SNF.ModId);
 
             PatchMethod(harmony, typeof(Object),
-                    nameof(Object.performUseAction),
+                    nameof(Object.performUseAction), null,
                     nameof(Patches.Object_performUseAction_Postfix));
             PatchMethod(harmony, typeof(GameLocation),
-                    nameof(GameLocation.tryToCreateUnseenSecretNote),
+                    nameof(GameLocation.tryToCreateUnseenSecretNote), null,
                     nameof(Patches.GameLocation_tryToCreateUnseenSecretNote_Postfix));
             PatchMethod(harmony, typeof(CollectionsPage),
-                    nameof(CollectionsPage.receiveLeftClick),
+                    nameof(CollectionsPage.receiveLeftClick), null,
                     nameof(Patches.CollectionsPage_receiveLeftClick_Postfix));
             PatchMethod(harmony, typeof(CollectionsPage),
-                    nameof(CollectionsPage.performHoverAction),
+                    nameof(CollectionsPage.performHoverAction), null,
                     nameof(Patches.CollectionsPage_performHoverAction_Transpiler));
+            PatchMethod(harmony, typeof(IClickableMenu),
+                    nameof(IClickableMenu.draw), new[]{typeof(SpriteBatch)},
+                    nameof(Patches.IClickableMenu_draw_Postfix));
             ConstructorInfo collectionspage_ctor = typeof(CollectionsPage)
                     .GetConstructor(new[]{typeof(int), typeof(int), typeof(int), typeof(int)});
             harmony.Patch(original: collectionspage_ctor,
@@ -43,7 +47,8 @@ namespace ichortower.SNF
         }
 
         // only suitable for unambiguous method names
-        private static void PatchMethod(Harmony harmony, Type t, string name, string patch)
+        private static void PatchMethod(Harmony harmony, Type t, string name,
+                Type[] argTypes, string patch)
         {
             string[] parts = patch.Split("_");
             string last = parts[parts.Length-1];
@@ -52,9 +57,18 @@ namespace ichortower.SNF
                 return;
             }
             try {
-                MethodInfo m = t.GetMethod(name,
-                        BindingFlags.Public | BindingFlags.NonPublic |
-                        BindingFlags.Instance | BindingFlags.Static);
+                MethodInfo m;
+                if (argTypes is null) {
+                    m = t.GetMethod(name,
+                            BindingFlags.Public | BindingFlags.NonPublic |
+                            BindingFlags.Instance | BindingFlags.Static);
+                }
+                else {
+                    m = t.GetMethod(name,
+                            BindingFlags.Public | BindingFlags.NonPublic |
+                            BindingFlags.Instance | BindingFlags.Static,
+                            null, argTypes, null);
+                }
                 HarmonyMethod func = new(typeof(Patches), patch);
                 if (last == "Prefix") {
                     harmony.Patch(original: m, prefix: func);
@@ -140,18 +154,27 @@ namespace ichortower.SNF
             if (__result != null && Game1.random.NextBool()) {
                 return;
             }
-            string context = __instance.GetLocationContextId().ToLower();
+            string locContext = __instance.GetLocationContextId().ToLower();
+            string locName = __instance.Name.ToLower();
+            // eligible is recorded separately from unseen, because the ratio
+            // determines the spawn chance. that's why the HasNote condition
+            // isn't inside the first Where here
             var eligible = SecretModNotes.Data.Where((kvp) => {
                 if (!SecretModNotes.AvailableNoteIds.Contains(kvp.Key)) {
                     return false;
                 }
-                string lc = kvp.Value.LocationContext;
-                if (lc.StartsWith("!")) {
-                    return context != lc.Substring(1).Trim().ToLower();
+                string startValue = kvp.Value.Location;
+                string checkValue = locName;
+                if (String.IsNullOrEmpty(startValue)) {
+                    startValue = kvp.Value.LocationContext;
+                    if (startValue.StartsWith("!")) {
+                        return locContext != startValue.Substring(1).Trim().ToLower();
+                    }
+                    checkValue = locContext;
                 }
-                string[] locs = lc.Split(",")
+                string[] validValues = startValue.Split(",")
                         .Select(s => s.Trim().ToLower()).ToArray();
-                return Array.IndexOf(locs, context) >= 0;
+                return Array.IndexOf(validValues, checkValue) >= 0;
             }).ToList();
             var unseen = eligible.Where(kvp => !ModData.HasNote(who, kvp.Key)).ToList();
             int notesHeld = 0;
@@ -240,9 +263,12 @@ namespace ichortower.SNF
                         " " + noteData.NoteImageTextureIndex +
                         " " + (noteData.Title ?? "???");
             }
-            string parsedText = Game1.parseText(Utility.ParseGiftReveals(noteData.Contents)
+            string subbedText = Dialogue.applyGenderSwitchBlocks(
+                    Game1.player.Gender, noteData.Contents);
+            subbedText = Utility.ParseGiftReveals(subbedText)
                     .TrimStart(' ', '^').Replace("^", Environment.NewLine)
-                    .Replace("@", Game1.player.Name), Game1.smallFont, 512);
+                    .Replace("@", Game1.player.Name);
+            string parsedText = Game1.parseText(subbedText, Game1.smallFont, 512);
             string[] split = parsedText.Split(Environment.NewLine);
             int max = 15;
             if (split.Length > max) {
@@ -272,7 +298,7 @@ namespace ichortower.SNF
         private static string applyHoverText(CollectionsPage instance, string text)
         {
             string[] split = ArgUtility.SplitBySpaceQuoteAware(text);
-            if (!split[0].Equals("!image")) {
+            if (!split[0].Equals("!image", StringComparison.OrdinalIgnoreCase)) {
                 return text;
             }
             int index = -1;
@@ -335,6 +361,35 @@ namespace ichortower.SNF
                 modified.Add(instr);
             }
             return modified;
+        }
+
+
+        public static void IClickableMenu_draw_Postfix(
+                IClickableMenu __instance,
+                SpriteBatch b)
+        {
+            if (__instance is LetterViewerMenu menu &&
+                    menu.secretNoteImage != -1 &&
+                    menu.mailMessage.Count > 0) {
+                // TODO find a better way than "+8" to get this value.
+                // using exactly the getHeight value doesn't work; probably
+                // exactly the size or oboe, so the split fails to get text
+                int linecap = SpriteText.getHeightOfString("Ag") + 8;
+                List<string> lines = SpriteText.getStringBrokenIntoSectionsOfHeight(
+                        menu.mailMessage[0], menu.width - 64, linecap);
+                SpriteText.drawStringHorizontallyCenteredAt(b, lines[0],
+                        menu.xPositionOnScreen + menu.width/2,
+                        menu.yPositionOnScreen + 32 + linecap,
+                        alpha: .75f, layerDepth: .867f,
+                        color: menu.getTextColor());
+                if (lines.Count > 1) {
+                    SpriteText.drawStringHorizontallyCenteredAt(b, lines[1],
+                            menu.xPositionOnScreen + menu.width/2,
+                            menu.yPositionOnScreen + menu.height - 32 - linecap*2,
+                            alpha: .75f, layerDepth: .867f,
+                            color: menu.getTextColor());
+                }
+            }
         }
 
 

@@ -122,6 +122,7 @@ namespace ichortower.SNF
         public string Contents = "";
         public string Title = null;
         public string Conditions = null;
+        public string Location = null;
         public string LocationContext = "!Island";
         public string ObjectId = null;
         public string NoteTexture = null;

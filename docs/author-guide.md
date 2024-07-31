@@ -9,6 +9,7 @@ Stardew Valley.
 * [Adding Notes](#adding-notes)
   * [Content Patcher example](#content-patcher-example)
   * [Image Notes](#image-notes)
+  * [Combined Notes](#combined-notes)
   * [Custom Items](#custom-items)
 * [How Modded Notes Work](#how-modded-notes-work)
   * [Spawning](#spawning)
@@ -31,18 +32,19 @@ a few advanced things, like:
 
 * specify complex eligibility conditions on a note-by-note basis with game
   state queries
-* determine which location context(s) your notes appear in, so you can (e.g.)
-  restrict your mod's notes to spawn only in your mod's area
+* declare which specific locations (or location contexts) your notes appear
+  in, so you can (e.g.) restrict your mod's notes to spawn only in your areas
 * use different (custom) items to represent different sets of notes, as
   desired
 * specify your own assets for note content and formatting, including image
   notes
+* create notes with an image as well as a small amount of text
 * set any number of trigger actions to be run when a note is first read
 
 Let's begin!
 
-(**Please note**: I recommend using i18n for text content in your mods. The
-examples in this guide omit its use, for clarity of purpose.)
+(**Please note**: although I recommend using i18n for text content in your
+mods, the examples in this guide omit its use, for clarity of purpose.)
 
 
 ## Adding Notes
@@ -79,6 +81,13 @@ breaks, and `@` will be replaced with the player's name. You can also use the
 codes](https://stardewvalleywiki.com/Modding:Mail_data#Custom_mail_formatting)
 `[letterbg]` and `[textcolor]`, but it is preferred to use the other fields for
 that instead (the fields will supersede the in-band format codes).
+
+Unlike vanilla notes, with Secret Note Framework you can include some text in
+image notes (see `NoteImageTextureIndex`, which is used to control whether a
+note displays an enclosed image). When `NoteImageTextureIndex` is >= 0, the
+`Contents` field will still be used, but is limited to two lines of text,
+displayed above and below the image. See [Combined Notes](#combined-notes) for
+more information.
 
 *Default:* `""`
 
@@ -124,20 +133,44 @@ note has been seen by a player, which is useful for ordering your notes.
 </tr>
 
 <tr>
+<td><code>Location</code></td>
+<td>string</td>
+<td>
+
+This string specifies one or more location names where the note is able to
+appear: except in the specified locations, the note will not spawn. This allows
+you to limit the areas where your note can be found even more narrowly than
+with `LocationContext` (but see that field for an alternative).
+
+Specify any number of location names, separated by commas (e.g. `Town, Forest,
+{{ModId}}_MyMap`), to allow a note to spawn in any of them.
+
+If this field is specified, it will supersede `LocationContext`; they cannot be
+combined.
+
+*Default:* `null`
+
+</td>
+</tr>
+
+<tr>
 <td><code>LocationContext</code></td>
 <td>string</td>
 <td>
 
 This string specifies one or more location contexts where the note is able to
-appear. Vanilla journal scraps spawn only in the `Island` context (i.e. on
-Ginger Island); secret notes spawn anywhere else. You can specify any value(s)
-here, including modded contexts, so for example if a mod adds a mountain area
-with a separate context, you can define notes which spawn only there.
+appear. In vanilla, journal scraps spawn only in the `Island` context (i.e. on
+Ginger Island), and secret notes spawn anywhere else. You can specify any
+value(s) here, including modded contexts, so for example if a mod adds a
+mountain area with a separate context, you can define notes which spawn only
+there.
 
 Specify any number of context names, separated by commas (e.g. `Default,
 Desert`), to allow a note to spawn in any of them. Alternately, you can specify
 one context name preceded by a `!` to specify any location *except* that one:
 the default value is `!Island`, mimicking vanilla's secret notes.
+
+If `Location` is specified, this field will be ignored.
 
 *Default:* `!Island`
 
@@ -156,9 +189,9 @@ matching it will be read (see [Spawning](#spawning), under how notes work, for
 more details). This item's sprite will also be displayed in the collections
 page to represent this note, either grayed out (unread) or normal (read).
 
-If this field is `null` (the default), the mod will use its default secret note
-object. For best results, you should leave it as default or specify a [custom
-item](#custom-items).
+If this field is `null` (the default), the framework will use its default
+secret note object. For best results, you should leave it as default or specify
+a [custom item](#custom-items).
 
 *Default:* `null`
 
@@ -214,6 +247,9 @@ any of the 10 acceptable vanilla color names:
 "NoteTextColor": "rgb(88, 34, 44)",
 ```
 
+Note that the text in mail and secret notes is rendered at 75% opacity, so the
+color you indicate here will blend slightly with the background texture.
+
 *Default:* `null`
 
 </td>
@@ -225,11 +261,12 @@ any of the 10 acceptable vanilla color names:
 <td>
 
 A game asset path indicating the texture to use when loading an image for an
-[image note](#image-notes) (see that section for more details).
-Note images are 64x64 pixels and are read in order, left-to-right and
-top-to-bottom, just like other spritesheets; but be aware that there is a
-hardcoded offset for the image of the piece of tape holding the image inside
-the note (193/65, 14x21), so you should not use the index containing that.
+[image note](#image-notes) or [combined note](#combined-notes) (see those
+sections for more details). Note images are 64x64 pixels and are read in
+order, left-to-right and top-to-bottom, just like other spritesheets; but be
+aware that there is a hardcoded offset for the image of the piece of tape
+holding the image inside the note (193/65, 14x21), so you should not use the
+index containing that.
 
 If `null`, the default secret notes image texture
 (`TileSheets/SecretNotesImages.png`) will be used.
@@ -247,8 +284,12 @@ If `null`, the default secret notes image texture
 An integer specifying the index in the `NoteImageTexture` to use for the note
 image. Unlike `NoteTextureIndex`, the default value here is `-1`, since the
 LetterViewerMenu itself uses this value to control rendering; as a result,
-**this value controls whether your note is an image note (>= 0) or a text note
-(-1)**.
+**this value controls whether your note is an image or combined note (>= 0) or
+a text note (-1)**.
+
+To display just an image in your note, set this to a value >= 0 and also omit
+the `Contents` field; for a combined note, also include `Contents` (but mind
+the limit on length in this case).
 
 *Default:* `-1`
 
@@ -323,6 +364,9 @@ this offset in the texture will be displayed (this applies to both the hover
 tooltip and the inside of the letter). This image behaves exactly like the
 vanilla secret notes texture (`Data/SecretNotesImages`), as follows.
 
+(Image notes can also include a small amount of text; see [Combined
+Notes](#combined-notes))
+
 Each note image in the texture is 64x64 pixels, the same size as a character
 portrait. They are read left-to-right and top-to-bottom, like this:
 
@@ -365,6 +409,41 @@ Here's how you might set up an image note via Content Patcher:
   "FromFile": "assets/{{TargetWithoutPath}}.png"
 }
 ```
+
+### Combined Notes
+
+Combined notes are [image notes](#image-notes) which also include text. To
+define one, simply set `NoteImageTextureIndex` to a value 0 or greater, and
+also include a `Contents` field. When both fields are set, the letter will
+render with an enclosed image, as above, and the first two lines' worth of text
+from `Contents` will be drawn above and below the image.
+
+**Note**: the text portion of combined notes **is not rendered in the note's
+hover tooltip** in the collections page. It is drawn only in the letter view
+itself.
+
+You can draw only the leading line by keeping your `Contents` field short; if
+there isn't enough text for a second line, it won't be drawn. Likewise, if you
+want only the trailing line, you can write a short line and start it with a
+mail-formatted line break `^`, so that the first line is empty.
+
+Here's how the previous image note example might look if it also included text:
+
+```js
+{
+  "Target": "Mods/ichortower.SecretNoteFramework/Notes",
+  "Action": "EditData",
+  "Entries": {
+    "{{ModId}}_SecretNote_TreasureMap": {
+      "Title": "Blackgull's Map",
+      "Contents": "^Good luck findin' this one, matey!",
+      "NoteImageTexture": "Mods/{{ModId}}/SecretNotesImages",
+      "NoteImageTextureIndex": 3
+    }
+  }
+}
+```
+
 
 ### Custom Items
 
