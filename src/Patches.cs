@@ -412,7 +412,11 @@ namespace ichortower.SNF
                 return;
             }
             var noteData = SecretModNotes.Data[parts[0]];
-            LetterViewerMenu lvm = new(noteData.Contents);
+            // have to call the parse/replace manually here, since the text
+            // constructor for LetterViewerMenu does not
+            string textContent = Utility.ParseGiftReveals(
+                    noteData.Contents.Replace("@", Game1.player.Name));
+            LetterViewerMenu lvm = new(textContent);
             FormatLetter(ref lvm, noteData);
             lvm.isFromCollection = true;
             __instance.letterviewerSubMenu = lvm;
