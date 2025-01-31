@@ -81,7 +81,7 @@ namespace ichortower.SNF
                 who = Game1.MasterPlayer;
             }
             else if (long.TryParse(playerKey, out var parsedId)) {
-                who = Game1.getFarmerMaybeOffline(parsedId);
+                who = Game1.GetPlayer(parsedId);
             }
             if (who == null) {
                 error = $"In action '{String.Join(" ", args)}': " +

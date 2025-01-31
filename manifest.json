@@ -2,10 +2,10 @@
   "Name": "Secret Note Framework",
   "Author": "ichortower",
   "Description": "A framework allowing mods to add their own Secret Notes.",
-  "Version": "1.1.1",
+  "Version": "1.1.2",
   "UniqueID": "ichortower.SecretNoteFramework",
   "EntryDll": "SecretNoteFramework.dll",
-  "MinimumApiVersion": "4.0.0",
+  "MinimumApiVersion": "4.1.0",
   "UpdateKeys": ["Nexus:25055", "GitHub:ichortower/SecretNoteFramework"],
   "Dependencies": [
     {

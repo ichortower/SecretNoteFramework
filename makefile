@@ -1,4 +1,8 @@
+MODE?=GOG
 GAME_DIR=${HOME}/GOG Games/Stardew Valley/game
+ifeq (${MODE}, steam)
+	GAME_DIR=${HOME}/.steam/steam/steamapps/common/Stardew Valley
+endif
 MOD_DIR=${GAME_DIR}/Mods/SecretNoteFramework
 
 install: smapi

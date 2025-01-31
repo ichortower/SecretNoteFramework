@@ -124,7 +124,10 @@ namespace ichortower.SNF
             Random r = Utility.CreateDaySaveRandom(Game1.player.UniqueMultiplayerID, 22122);
             var chosen = r.ChooseFrom(eligible);
             ModData.AddNote(Game1.player, chosen.Key);
-            LetterViewerMenu lvm = new(chosen.Value.Contents);
+            // manually call parse/replace since text constructor does not
+            string textContent = Utility.ParseGiftReveals(
+                    chosen.Value.Contents.Replace("@", Game1.player.Name));
+            LetterViewerMenu lvm = new(textContent);
             FormatLetter(ref lvm, chosen.Value);
             lvm.exitFunction = delegate {
                 foreach (string act in chosen.Value.ActionsOnFirstRead) {
