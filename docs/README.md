@@ -28,7 +28,7 @@ these infelicities, I sidetracked myself into making this framework.
 
 ## How to Use
 
-As a user, you will need SMAPI 4.0+ and Stardew Valley 1.6+. Just install this
+As a user, you will need SMAPI 4.1+ and Stardew Valley 1.6.9+. Just install this
 mod like any other (unzip it into your Mods folder), and your other mods that
 depend on it will do their work.
 
