@@ -36,9 +36,9 @@ namespace ichortower.SNF
             PatchMethod(harmony, typeof(CollectionsPage),
                     nameof(CollectionsPage.performHoverAction), null,
                     nameof(Patches.CollectionsPage_performHoverAction_Transpiler));
-            PatchMethod(harmony, typeof(IClickableMenu),
-                    nameof(IClickableMenu.draw), new[]{typeof(SpriteBatch)},
-                    nameof(Patches.IClickableMenu_draw_Postfix));
+            PatchMethod(harmony, typeof(LetterViewerMenu),
+                    nameof(LetterViewerMenu.draw), new[]{typeof(SpriteBatch)},
+                    nameof(Patches.LetterViewerMenu_draw_Postfix));
             ConstructorInfo collectionspage_ctor = typeof(CollectionsPage)
                     .GetConstructor(new[]{typeof(int), typeof(int), typeof(int), typeof(int)});
             harmony.Patch(original: collectionspage_ctor,
@@ -129,7 +129,7 @@ namespace ichortower.SNF
                     chosen.Value.Contents.Replace("@", Game1.player.Name));
             LetterViewerMenu lvm = new(textContent);
             FormatLetter(ref lvm, chosen.Value);
-            lvm.exitFunction = delegate {
+            lvm.exitFunction += delegate {
                 foreach (string act in chosen.Value.ActionsOnFirstRead) {
                     if (!TriggerActionManager.TryRunAction(
                             act, out string err, out Exception e)) {
@@ -366,32 +366,59 @@ namespace ichortower.SNF
             return modified;
         }
 
+        internal static List<string> _lines = new();
+        internal static bool heck = false;
 
-        public static void IClickableMenu_draw_Postfix(
-                IClickableMenu __instance,
+        public static void LetterViewerMenu_draw_Postfix(
+                LetterViewerMenu __instance,
                 SpriteBatch b)
         {
-            if (__instance is LetterViewerMenu menu &&
-                    menu.secretNoteImage != -1 &&
-                    menu.mailMessage.Count > 0) {
-                // TODO find a better way than "+8" to get this value.
-                // using exactly the getHeight value doesn't work; probably
-                // exactly the size or oboe, so the split fails to get text
-                int linecap = SpriteText.getHeightOfString("Ag") + 8;
-                List<string> lines = SpriteText.getStringBrokenIntoSectionsOfHeight(
-                        menu.mailMessage[0], menu.width - 64, linecap);
-                SpriteText.drawStringHorizontallyCenteredAt(b, lines[0],
+            var menu = __instance;
+            // this dumpout is to handle the extra draw() that (sometimes) runs
+            // after exitFunction.
+            if (heck) {
+                heck = false;
+                return;
+            }
+            // don't draw until the opening swoosh is done
+            if (menu.scale != 1f) {
+                return;
+            }
+            if (menu.secretNoteImage == -1 || menu.mailMessage.Count == 0) {
+                return;
+            }
+
+            int linecap = SpriteText.getHeightOfString("A") +
+                    (int)(2 * SpriteText.FontPixelZoom);
+
+            if (_lines.Count == 0) {
+                string withNewLines = menu.mailMessage[0].Replace(
+                        "^", Environment.NewLine);
+                string parsed = Game1.parseText(withNewLines,
+                        Game1.dialogueFont, menu.width - 64);
+                string[] split = parsed.Split(Environment.NewLine);
+                _lines.Add(split[0]);
+                if (split.Length > 1) {
+                    _lines.Add(split[1]);
+                }
+                menu.exitFunction += delegate {
+                    _lines.Clear();
+                    // set the flag required to stop the extra draw
+                    heck = true;
+                };
+            }
+
+            SpriteText.drawStringHorizontallyCenteredAt(b, _lines[0],
+                    menu.xPositionOnScreen + menu.width/2,
+                    menu.yPositionOnScreen + 32 + linecap,
+                    alpha: .75f, layerDepth: .867f,
+                    color: menu.getTextColor());
+            if (_lines.Count > 1) {
+                SpriteText.drawStringHorizontallyCenteredAt(b, _lines[1],
                         menu.xPositionOnScreen + menu.width/2,
-                        menu.yPositionOnScreen + 32 + linecap,
+                        menu.yPositionOnScreen + menu.height - 32 - linecap*2,
                         alpha: .75f, layerDepth: .867f,
                         color: menu.getTextColor());
-                if (lines.Count > 1) {
-                    SpriteText.drawStringHorizontallyCenteredAt(b, lines[1],
-                            menu.xPositionOnScreen + menu.width/2,
-                            menu.yPositionOnScreen + menu.height - 32 - linecap*2,
-                            alpha: .75f, layerDepth: .867f,
-                            color: menu.getTextColor());
-                }
             }
         }
 
