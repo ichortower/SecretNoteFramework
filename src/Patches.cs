@@ -257,12 +257,13 @@ namespace ichortower.SNF
         }
 
         public static Texture2D SavedVanillaTexture = null;
+        public const string DefaultTextureName = "TileSheets\\SecretNotesImages";
 
         private static string makeHoverText(SecretModNoteData noteData)
         {
-            if (!String.IsNullOrEmpty(noteData.NoteImageTexture) &&
-                    noteData.NoteImageTextureIndex >= 0) {
-                return $"!image \"{noteData.NoteImageTexture}\"" +
+            if (noteData.NoteImageTextureIndex >= 0) {
+                string tex = noteData.NoteImageTexture ?? DefaultTextureName;
+                return $"!image \"{tex}\"" +
                         " " + noteData.NoteImageTextureIndex +
                         " " + (noteData.Title ?? "???");
             }
@@ -486,17 +487,21 @@ namespace ichortower.SNF
                     _ = lvm.ApplyCustomFormatting(fakefmt);
                 }
             }
-            if (note.NoteImageTexture != null) {
-                try {
-                    lvm.secretNoteImageTexture = Game1.temporaryContent.Load
-                            <Texture2D>(note.NoteImageTexture);
-                }
-                catch {
-                    Log.Error($"Missing image texture asset: '{note.NoteImageTexture}'");
-                }
-            }
             if (note.NoteImageTextureIndex >= 0) {
                 lvm.secretNoteImage = note.NoteImageTextureIndex;
+                if (note.NoteImageTexture != null) {
+                    try {
+                        lvm.secretNoteImageTexture = Game1.temporaryContent.Load
+                                <Texture2D>(note.NoteImageTexture);
+                    }
+                    catch {
+                        Log.Error($"Missing image texture asset: '{note.NoteImageTexture}'");
+                    }
+                }
+                else {
+                    lvm.secretNoteImageTexture = Game1.temporaryContent.Load<Texture2D>
+                            (DefaultTextureName);
+                }
             }
         }
     }
