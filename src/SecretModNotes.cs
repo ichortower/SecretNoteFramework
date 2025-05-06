@@ -17,15 +17,19 @@ namespace ichortower.SNF
         public static HashSet<string> ActiveObjectIds = new();
         public static HashSet<string> AvailableNoteIds = new();
 
-        private static Dictionary<string, SecretModNoteData> _data;
+        private static Dictionary<string, SecretModNoteData> _data = null;
         public static Dictionary<string, SecretModNoteData> Data
         {
             get {
+                _data ??= Load(Game1.content);
                 return _data;
             }
             set {
                 _data = value;
                 ActiveObjectIds.Clear();
+                if (_data is null) {
+                    return;
+                }
                 foreach (var entry in _data) {
                     ActiveObjectIds.Add(ItemRegistry.QualifyItemId(
                             entry.Value.ObjectId ?? DefaultObjectId));
@@ -36,9 +40,6 @@ namespace ichortower.SNF
         public static void RefreshAvailableNotes()
         {
             AvailableNoteIds.Clear();
-            if (Data is null) {
-                return;
-            }
             foreach (var entry in Data) {
                 if (GameStateQuery.CheckConditions(entry.Value.Conditions)) {
                     AvailableNoteIds.Add(entry.Key);
@@ -98,19 +99,12 @@ namespace ichortower.SNF
             }
         }
 
-        public static void OnAssetReady(object sender, AssetReadyEventArgs e)
-        {
-            if (e.Name.IsEquivalentTo(NotesAsset)) {
-                Data = Load(Game1.content);
-            }
-        }
-
         public static void OnAssetsInvalidated(object sender, AssetsInvalidatedEventArgs e)
         {
             foreach (var name in e.Names) {
                 if (name.IsEquivalentTo(NotesAsset)) {
                     Log.Trace("Invalidating note data");
-                    Data = Load(Game1.content);
+                    Data = null;
                 }
             }
         }

@@ -15,7 +15,6 @@ namespace ichortower.SNF
             SNF.ModId = instance.ModManifest.UniqueID;
 
             helper.Events.Content.AssetRequested += SecretModNotes.OnAssetRequested;
-            helper.Events.Content.AssetReady += SecretModNotes.OnAssetReady;
             helper.Events.Content.AssetsInvalidated += SecretModNotes.OnAssetsInvalidated;
             helper.Events.GameLoop.GameLaunched += SecretNoteFramework.OnGameLaunched;
             helper.Events.GameLoop.DayStarted += SecretNoteFramework.OnDayStarted;
@@ -34,7 +33,6 @@ namespace ichortower.SNF
 
         public static void OnDayStarted(object sender, DayStartedEventArgs e)
         {
-            SecretModNotes.Data = SecretModNotes.Load(Game1.content);
             SecretModNotes.RefreshAvailableNotes();
         }
 
