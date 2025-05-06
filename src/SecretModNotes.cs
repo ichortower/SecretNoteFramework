@@ -21,19 +21,15 @@ namespace ichortower.SNF
         public static Dictionary<string, SecretModNoteData> Data
         {
             get {
-                _data ??= Load(Game1.content);
+                if (_data is null) {
+                    _data = Load(Game1.content);
+                    ActivateObjects();
+                }
                 return _data;
             }
             set {
                 _data = value;
-                ActiveObjectIds.Clear();
-                if (_data is null) {
-                    return;
-                }
-                foreach (var entry in _data) {
-                    ActiveObjectIds.Add(ItemRegistry.QualifyItemId(
-                            entry.Value.ObjectId ?? DefaultObjectId));
-                }
+                ActivateObjects();
             }
         }
 
@@ -64,6 +60,22 @@ namespace ichortower.SNF
                 entry.Value.ObjectId = qid;
             }
             return data;
+        }
+
+        public static void ActivateObjects()
+        {
+            ActiveObjectIds.Clear();
+            if (_data is null) {
+                return;
+            }
+            foreach (var entry in _data) {
+                if (String.IsNullOrEmpty(entry.Value.ObjectId)) {
+                    ActiveObjectIds.Add(ItemRegistry.QualifyItemId(DefaultObjectId));
+                    continue;
+                }
+                // these should already be qualified, per Load, but play it safe
+                ActiveObjectIds.Add(ItemRegistry.QualifyItemId(entry.Value.ObjectId));
+            }
         }
 
         public static void OnAssetRequested(object sender, AssetRequestedEventArgs e)
