@@ -39,11 +39,22 @@ namespace ichortower.SNF
             PatchMethod(harmony, typeof(LetterViewerMenu),
                     nameof(LetterViewerMenu.draw), new[]{typeof(SpriteBatch)},
                     nameof(Patches.LetterViewerMenu_draw_Postfix));
-            ConstructorInfo collectionspage_ctor = typeof(CollectionsPage)
-                    .GetConstructor(new[]{typeof(int), typeof(int), typeof(int), typeof(int)});
-            harmony.Patch(original: collectionspage_ctor,
-                    postfix: new HarmonyMethod(typeof(Patches),
-                        nameof(Patches.CollectionsPage_ctor_Postfix)));
+            string ctorFullName = "<unresolved>";
+            try {
+                ConstructorInfo collectionspage_ctor = typeof(CollectionsPage)
+                        .GetConstructor(new[]{typeof(int),typeof(int),typeof(int),typeof(int)});
+                ctorFullName = collectionspage_ctor.DeclaringType.FullName + "." +
+                        collectionspage_ctor.Name;
+                harmony.Patch(original: collectionspage_ctor,
+                        postfix: new HarmonyMethod(typeof(Patches),
+                            nameof(Patches.CollectionsPage_ctor_Postfix)),
+                        transpiler: new HarmonyMethod(typeof(Patches),
+                            nameof(Patches.CollectionsPage_ctor_Transpiler)));
+                Log.Trace($"Patched (Postfix, Transpiler) {ctorFullName}");
+            }
+            catch (Exception e) {
+                Log.Error($"Patch failed ({ctorFullName}): {e}");
+            }
         }
 
         // only suitable for unambiguous method names
@@ -79,6 +90,7 @@ namespace ichortower.SNF
                 else if (last == "Transpiler") {
                     harmony.Patch(original: m, transpiler: func);
                 }
+                Log.Trace($"Patched ({last}) {m.DeclaringType.FullName + "." + m.Name}");
             }
             catch (Exception e) {
                 Log.Error($"Patch failed ({patch}): {e}");
@@ -284,6 +296,38 @@ namespace ichortower.SNF
                     Environment.NewLine + parsedText;
         }
 
+        public static IEnumerable<CodeInstruction> CollectionsPage_ctor_Transpiler(
+                IEnumerable<CodeInstruction> instructions,
+                ILGenerator generator,
+                MethodBase original)
+        {
+            MethodInfo getplayer = typeof(StardewValley.Game1).GetProperty(
+                    nameof(StardewValley.Game1.player),
+                    BindingFlags.Public | BindingFlags.Static)
+                    .GetGetMethod();
+            MethodInfo countcall = typeof(Patches).GetMethod(nameof(HowManyNotesReally),
+                    BindingFlags.NonPublic | BindingFlags.Static);
+            CodeMatcher cm = new(instructions);
+            cm.MatchStartForward(
+                    new CodeMatch(OpCodes.Call, getplayer),
+                    new CodeMatch(OpCodes.Ldfld),
+                    new CodeMatch(OpCodes.Callvirt),
+                    new CodeMatch(OpCodes.Ldc_I4_0),
+                    new CodeMatch(OpCodes.Ble))
+            .Repeat(matchAction: m => {
+                CodeInstruction c = new(OpCodes.Call, countcall);
+                c.MoveLabelsFrom(m.Instruction);
+                m.RemoveInstructions(3);
+                m.InsertAndAdvance(c);
+            });
+            return cm.InstructionEnumeration();
+        }
+
+        private static int HowManyNotesReally()
+        {
+            return Game1.player.secretNotesSeen.Count + ModData.Notes(Game1.player).Count;
+        }
+
         /*
          * This is called by the transpiler to reset the vanilla note image
          * texture (before potentially setting it below).
@@ -317,8 +361,7 @@ namespace ichortower.SNF
         }
 
         
-        public static IEnumerable<CodeInstruction>
-            CollectionsPage_performHoverAction_Transpiler(
+        public static IEnumerable<CodeInstruction> CollectionsPage_performHoverAction_Transpiler(
                 IEnumerable<CodeInstruction> instructions,
                 ILGenerator generator,
                 MethodBase original)
