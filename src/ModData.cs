@@ -19,19 +19,20 @@ namespace ichortower.SNF
             _cache.Clear();
         }
 
-        public static void Load(Farmer who)
+        public static HashSet<string> Notes(Farmer who)
         {
             if (_cache.ContainsKey(who)) {
-                return;
+                return _cache[who];
             }
             _cache[who] = new HashSet<string>();
             string serial;
             if (!who.modData.TryGetValue(_dataKey, out serial)) {
-                return;
+                return _cache[who];
             }
             string[] items = serial.Trim('[',']').Split(",")
                     .Select(s => s.Trim('"')).ToArray();
             _cache[who].UnionWith(items);
+            return _cache[who];
         }
 
         private static void Write(Farmer who)
@@ -57,14 +58,12 @@ namespace ichortower.SNF
 
         public static bool HasNote(Farmer who, string id)
         {
-            Load(who);
-            return _cache[who].Contains(id);
+            return Notes(who).Contains(id);
         }
 
         public static bool AddNote(Farmer who, string id)
         {
-            Load(who);
-            bool ret = _cache[who].Add(id);
+            bool ret = Notes(who).Add(id);
             if (ret) {
                 Write(who);
             }
@@ -73,8 +72,7 @@ namespace ichortower.SNF
 
         public static bool RemoveNote(Farmer who, string id)
         {
-            Load(who);
-            bool ret = _cache[who].Remove(id);
+            bool ret = Notes(who).Remove(id);
             if (ret) {
                 Write(who);
             }
@@ -87,8 +85,7 @@ namespace ichortower.SNF
          */
         public static string NotesAsToken(Farmer who)
         {
-            Load(who);
-            return string.Join(", ", _cache[who].ToArray());
+            return string.Join(", ", Notes(who).ToArray());
         }
     }
 }
