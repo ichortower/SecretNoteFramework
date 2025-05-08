@@ -611,9 +611,10 @@ the frequency of generated notes too much).
 
 The check has the same chance as the vanilla notes, but taking into account
 only notes which are available to spawn (based on their `Conditions` and
-`LocationContext` fields): a linear scale, from 80% if none have been found to
-12% if only one remains unseen. If not rolling to replace a vanilla note, the
-starting chance is cut in half, so the range becomes 40% to 12%.
+`Location`/`LocationContext` fields): a linear scale, from 80% if none have
+been found to 12% if only one remains unseen. If not rolling to replace a
+vanilla note, the starting chance is cut in half, so the range becomes 40% to
+12%.
 
 When a note is spawned, its `ObjectId` field is checked to generate the
 inventory item. Like with vanilla secret notes, the note has not truly been
