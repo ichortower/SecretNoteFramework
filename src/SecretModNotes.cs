@@ -17,6 +17,9 @@ namespace ichortower.SNF
         public static HashSet<string> ActiveObjectIds = new();
         public static HashSet<string> AvailableNoteIds = new();
 
+        // notes registered via API
+        internal static Dictionary<string, SecretModNoteData> RegisteredNotes = new();
+
         private static Dictionary<string, SecretModNoteData> _data = null;
         public static Dictionary<string, SecretModNoteData> Data
         {
@@ -83,6 +86,12 @@ namespace ichortower.SNF
             if (e.Name.IsEquivalentTo(NotesAsset)) {
                 e.LoadFrom(() => new Dictionary<string, SecretModNoteData>(),
                         AssetLoadPriority.Exclusive);
+                e.Edit(asset => {
+                    var dict = asset.AsDictionary<string, SecretModNoteData>();
+                    foreach (var entry in RegisteredNotes) {
+                        dict.Data[entry.Key] = entry.Value;
+                    }
+                });
             }
             else if (e.Name.IsEquivalentTo("Data/Objects")) {
                 var modAsset = SecretNoteFramework.instance.Helper.ModContent.Load

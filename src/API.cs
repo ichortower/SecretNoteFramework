@@ -33,8 +33,7 @@ public class API
      */
     public bool RegisterSecretNote(string uniqueId, INoteData note)
     {
-        Log.Info($"Received call to register {uniqueId} with data {note}");
-        Log.Warn($"note.Contents: {note.Contents}");
+        SecretModNotes.RegisteredNotes[uniqueId] = (SecretModNoteData)note;
         return true;
     }
 
