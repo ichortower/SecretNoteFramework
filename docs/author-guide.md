@@ -8,6 +8,7 @@ Stardew Valley.
 * [Introduction](#introduction)
 * [Adding Notes](#adding-notes)
   * [Content Patcher example](#content-patcher-example)
+  * [C# API Example](#c-api-example)
   * [Image Notes](#image-notes)
   * [Combined Notes](#combined-notes)
   * [Custom Items](#custom-items)
@@ -22,9 +23,14 @@ Stardew Valley.
 ## Introduction
 
 Secret Note Framework works for other mods by providing a data asset for them
-to edit. At this time, other mods are expected to use Content Patcher or
-SMAPI's Content API to perform their edits; in the future, I may provide
-content pack support and/or a C# API, but those are not supported yet.
+to edit. At this time, clients are expected to use Content Patcher or the C#
+API in order to perform their edits. It is probably possible to use SMAPI's
+content API as well, if you are writing a C# mod, but you would need to copy
+the interface definition over anyway, and at that point it's probably easier to
+just use Secret Note Framework's API.
+
+I do not support content packs at this time, and that feature is unlikely to
+appear.
 
 In addition to providing a way to add secret notes without fear of conflicts
 (or of running out of space on the collections page), this mod also lets you do
@@ -354,6 +360,71 @@ This patch creates a note which is available only after reaching 4 hearts with
 player for the next day, presumably to scold them for reading the diary.
 
 
+### C# API Example
+
+As usual for mod-provided APIs, to use this one you will have to copy its
+definitions into your own project. From [API.cs](../src/API.cs) you will need:
+
+- the definitions for methods you will call
+- the `INoteData` interface definition
+
+... which might look like this:
+
+```cs
+namespace ichortower.SNF
+{
+    public interface ISnfApi
+    {
+        public INoteData CreateDataObject();
+        public bool RegisterSecretNote(string uniqueId, INoteData note);
+        public bool Reload(bool data = false, bool conditions = false);
+    }
+
+    public interface INoteData
+    {
+        public string Contents { get; set; }
+        public string Title { get; set; }
+        public string Conditions { get; set; }
+        public string Location { get; set; }
+        public string LocationContext { get; set; }
+        public string ObjectId { get; set; }
+        public string NoteTexture { get; set; }
+        public int NoteTextureIndex { get; set; }
+        public string NoteTextColor { get; set; }
+        public string NoteImageTexture { get; set; }
+        public int NoteImageTextureIndex { get; set; }
+        public List<string> ActionsOnFirstRead { get; set; }
+    }
+}
+```
+
+You must have a class instance that implements `INoteData` in order to set its
+values and ultimately call `RegisterSecretNote()`: to do this, you can use
+`CreateDataObject()` to get an instance of the one SNF uses internally, instead
+of implementing your own subclass.
+
+Looking back to the Content Patcher example above, here's how you could
+implement the same note using the C# API:
+
+```cs
+var snfApi = Helper.ModRegistry.GetApi<ISnfApi>("ichortower.SecretNoteFramework");
+if (snfApi is null) {
+    // account for failure here, of course
+}
+INoteData obj = snfApi.CreateDataObject();
+obj.Contents = "I sure hope nobody finds this! It's full of embarrassing secrets.";
+obj.Title = "TOP SECRET DIARY";
+obj.Conditions = $"PLAYER_HEARTS Current {MyNPC.InternalName} 4";
+obj.ActionsOnFirstRead.Add($"AddMail Current {ModManifest.UniqueID}_Mail_HowDareYouFindMyDiary tomorrow");
+snfApi.RegisterSecretNote($"{ModManifest.UniqueID}_SecretNote01", obj);
+```
+
+Remember that you will have to do this work no earlier than `GameLaunched`. If
+you need to register after the notes asset has already been requested and
+loaded, you will need to invalidate the asset (or call the API's `Reload()`,
+which will invalidate and request it) in order to see your notes.
+
+
 ### Image Notes
 
 You can create image secret notes (like the picture of Marnie, or the secret
@@ -540,9 +611,10 @@ the frequency of generated notes too much).
 
 The check has the same chance as the vanilla notes, but taking into account
 only notes which are available to spawn (based on their `Conditions` and
-`LocationContext` fields): a linear scale, from 80% if none have been found to
-12% if only one remains unseen. If not rolling to replace a vanilla note, the
-starting chance is cut in half, so the range becomes 40% to 12%.
+`Location`/`LocationContext` fields): a linear scale, from 80% if none have
+been found to 12% if only one remains unseen. If not rolling to replace a
+vanilla note, the starting chance is cut in half, so the range becomes 40% to
+12%.
 
 When a note is spawned, its `ObjectId` field is checked to generate the
 inventory item. Like with vanilla secret notes, the note has not truly been

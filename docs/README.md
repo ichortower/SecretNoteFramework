@@ -42,3 +42,15 @@ authors.
 
 A more detailed explanation of how to use this mod's features is in the [author
 guide](author-guide.md).
+
+
+## Translation Credits
+
+The following non-English languages are included with the mod and supported out
+of the box:
+
+- French (courtesy [Caranud](https://next.nexusmods.com/profile/caranud?gameId=1303))
+- Japanese (by ichortower)
+- Korean (courtesy [JA3B2](https://next.nexusmods.com/profile/ja3b2?gameId=1303))
+
+My heartfelt thanks to these contributors.

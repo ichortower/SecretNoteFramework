@@ -129,6 +129,8 @@ namespace ichortower.SNF
             case "data":
                 SecretNoteFramework.instance.Helper.GameContent.InvalidateCache(
                         SecretModNotes.NotesAsset);
+                _ = SecretModNotes.Data;
+                Log.Info("Reloaded note data.");
                 break;
             case "check":
                 SecretModNotes.RefreshAvailableNotes();
@@ -138,7 +140,7 @@ namespace ichortower.SNF
                 SecretNoteFramework.instance.Helper.GameContent.InvalidateCache(
                         SecretModNotes.NotesAsset);
                 SecretModNotes.RefreshAvailableNotes();
-                Log.Info("Refreshed note conditions.");
+                Log.Info("Reloaded note data and refreshed note conditions.");
                 break;
             case "help":
             default:

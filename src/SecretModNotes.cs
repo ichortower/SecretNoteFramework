@@ -17,28 +17,28 @@ namespace ichortower.SNF
         public static HashSet<string> ActiveObjectIds = new();
         public static HashSet<string> AvailableNoteIds = new();
 
-        private static Dictionary<string, SecretModNoteData> _data;
+        // notes registered via API
+        internal static Dictionary<string, SecretModNoteData> RegisteredNotes = new();
+
+        private static Dictionary<string, SecretModNoteData> _data = null;
         public static Dictionary<string, SecretModNoteData> Data
         {
             get {
+                if (_data is null) {
+                    _data = Load(Game1.content);
+                    ActivateObjects();
+                }
                 return _data;
             }
             set {
                 _data = value;
-                ActiveObjectIds.Clear();
-                foreach (var entry in _data) {
-                    ActiveObjectIds.Add(ItemRegistry.QualifyItemId(
-                            entry.Value.ObjectId ?? DefaultObjectId));
-                }
+                ActivateObjects();
             }
         }
 
         public static void RefreshAvailableNotes()
         {
             AvailableNoteIds.Clear();
-            if (Data is null) {
-                return;
-            }
             foreach (var entry in Data) {
                 if (GameStateQuery.CheckConditions(entry.Value.Conditions)) {
                     AvailableNoteIds.Add(entry.Key);
@@ -65,11 +65,33 @@ namespace ichortower.SNF
             return data;
         }
 
+        public static void ActivateObjects()
+        {
+            ActiveObjectIds.Clear();
+            if (_data is null) {
+                return;
+            }
+            foreach (var entry in _data) {
+                if (String.IsNullOrEmpty(entry.Value.ObjectId)) {
+                    ActiveObjectIds.Add(ItemRegistry.QualifyItemId(DefaultObjectId));
+                    continue;
+                }
+                // these should already be qualified, per Load, but play it safe
+                ActiveObjectIds.Add(ItemRegistry.QualifyItemId(entry.Value.ObjectId));
+            }
+        }
+
         public static void OnAssetRequested(object sender, AssetRequestedEventArgs e)
         {
             if (e.Name.IsEquivalentTo(NotesAsset)) {
                 e.LoadFrom(() => new Dictionary<string, SecretModNoteData>(),
                         AssetLoadPriority.Exclusive);
+                e.Edit(asset => {
+                    var dict = asset.AsDictionary<string, SecretModNoteData>();
+                    foreach (var entry in RegisteredNotes) {
+                        dict.Data[entry.Key] = entry.Value;
+                    }
+                });
             }
             else if (e.Name.IsEquivalentTo("Data/Objects")) {
                 var modAsset = SecretNoteFramework.instance.Helper.ModContent.Load
@@ -98,38 +120,32 @@ namespace ichortower.SNF
             }
         }
 
-        public static void OnAssetReady(object sender, AssetReadyEventArgs e)
-        {
-            if (e.Name.IsEquivalentTo(NotesAsset)) {
-                Data = Load(Game1.content);
-            }
-        }
-
         public static void OnAssetsInvalidated(object sender, AssetsInvalidatedEventArgs e)
         {
             foreach (var name in e.Names) {
                 if (name.IsEquivalentTo(NotesAsset)) {
                     Log.Trace("Invalidating note data");
-                    Data = Load(Game1.content);
+                    Data = null;
                 }
             }
         }
 
     }
 
-    internal class SecretModNoteData
+    public class SecretModNoteData : API.INoteData
     {
-        public string Contents = "";
-        public string Title = null;
-        public string Conditions = null;
-        public string Location = null;
-        public string LocationContext = "!Island";
-        public string ObjectId = null;
-        public string NoteTexture = null;
-        public int NoteTextureIndex = 0;
-        public string NoteTextColor = null;
-        public string NoteImageTexture = null;
-        public int NoteImageTextureIndex = -1;
-        public List<string> ActionsOnFirstRead = new();
+        public string Contents { get; set; } = "";
+        public string Title { get; set; } = null;
+        public string Conditions { get; set; } = null;
+        public string Location { get; set; } = null;
+        public string LocationContext { get; set; } = "!Island";
+        public string ObjectId { get; set; } = null;
+        public string NoteTexture { get; set; } = null;
+        public int NoteTextureIndex { get; set; } = 0;
+        public string NoteTextColor { get; set; } = null;
+        public string NoteImageTexture { get; set; } = null;
+        public int NoteImageTextureIndex { get; set; } = -1;
+        public List<string> ActionsOnFirstRead { get; set; } = new();
     }
+
 }
