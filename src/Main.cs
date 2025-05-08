@@ -26,6 +26,11 @@ namespace ichortower.SNF
             ConsoleCommands.Register();
         }
 
+        public override object GetApi()
+        {
+            return new ichortower.SNF.API();
+        }
+
         public static void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
             CPTokens.Register();

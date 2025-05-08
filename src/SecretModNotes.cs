@@ -123,19 +123,20 @@ namespace ichortower.SNF
 
     }
 
-    internal class SecretModNoteData
+    public class SecretModNoteData : API.INoteData
     {
-        public string Contents = "";
-        public string Title = null;
-        public string Conditions = null;
-        public string Location = null;
-        public string LocationContext = "!Island";
-        public string ObjectId = null;
-        public string NoteTexture = null;
-        public int NoteTextureIndex = 0;
-        public string NoteTextColor = null;
-        public string NoteImageTexture = null;
-        public int NoteImageTextureIndex = -1;
-        public List<string> ActionsOnFirstRead = new();
+        public string Contents { get; set; } = "";
+        public string Title { get; set; } = null;
+        public string Conditions { get; set; } = null;
+        public string Location { get; set; } = null;
+        public string LocationContext { get; set; } = "!Island";
+        public string ObjectId { get; set; } = null;
+        public string NoteTexture { get; set; } = null;
+        public int NoteTextureIndex { get; set; } = 0;
+        public string NoteTextColor { get; set; } = null;
+        public string NoteImageTexture { get; set; } = null;
+        public int NoteImageTextureIndex { get; set; } = -1;
+        public List<string> ActionsOnFirstRead { get; set; } = new();
     }
+
 }
