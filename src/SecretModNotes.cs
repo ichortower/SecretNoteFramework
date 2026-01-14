@@ -107,7 +107,7 @@ namespace ichortower.SNF
                 e.Edit(asset => {
                     var dict = asset.AsDictionary<string, string>();
                     dict.Data[$"{SNF.ModId}_DefaultNote_Name"] =
-                            TR.Get("Objects.DefaultNote.Name");
+                            Game1.content.LoadString("Strings\\Objects:SecretNote_Name");
                     dict.Data[$"{SNF.ModId}_DefaultNote_Description"] =
                             TR.Get("Objects.DefaultNote.Description");
                 });
