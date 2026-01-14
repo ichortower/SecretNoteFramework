@@ -39,7 +39,7 @@ namespace ichortower.SNF
             }
             cpapi.RegisterToken(SecretNoteFramework.instance.ModManifest,
                     "HasModNote", () => {
-                return new[] {ModData.NotesAsToken(Game1.player)};
+                return ModData.NotesAsToken(Game1.player);
             });
         }
     }

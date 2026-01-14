@@ -83,9 +83,9 @@ namespace ichortower.SNF
          * Returns the given farmer's seen mod notes in CP token format
          * (comma-separated list of strings).
          */
-        public static string NotesAsToken(Farmer who)
+        public static string[] NotesAsToken(Farmer who)
         {
-            return string.Join(", ", Notes(who).ToArray());
+            return Notes(who).ToArray();
         }
     }
 }
